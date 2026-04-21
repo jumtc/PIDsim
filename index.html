@@ -3,48 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PID Servo Playground</title>
+    <title>PID Playground</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         input[type=range] { height: 6px; -webkit-appearance: none; background: #e2e8f0; border-radius: 5px; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #475569; cursor: pointer; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-        .physics-label { font-size: 0.65rem; color: #64748b; font-family: monospace; font-weight: 600; }
         .sim-grid {
             background-size: 40px 40px;
-            background-image: linear-gradient(to right, #f1f5f9 1px, transparent 1px), linear-gradient(to bottom, #f1f5f9 1px, transparent 1px);
+            background-image: linear-gradient(to right, #f8fafc 1px, transparent 1px), linear-gradient(to bottom, #f8fafc 1px, transparent 1px);
         }
     </style>
 </head>
-<body class="bg-white min-h-screen text-slate-800 p-2 md:p-4">
+<body class="bg-white min-h-screen text-slate-800 p-2 md:p-4 font-sans">
 
     <div class="max-w-5xl mx-auto space-y-4">
         <!-- Header -->
-        <header class="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-200">
+        <header class="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
             <div>
-                <h1 class="text-xl font-bold text-slate-900 leading-none">Servo PID Playground</h1>
-                <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-bold">1kg Inertia & Load Force Simulation</p>
+                <h1 class="text-xl font-bold text-slate-900 leading-none tracking-tight">PID Precision Playground</h1>
+                <p class="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-bold">Servo Tracking Simulator</p>
             </div>
             <div class="flex gap-2">
-                <button id="autotuneBtn" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm">Auto-Tune</button>
-                <button id="resetBtn" class="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-300 transition-colors">Reset</button>
+                <button id="stepBtn" class="px-4 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors">Trigger Step</button>
+                <button id="autotuneBtn" class="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors">Auto-Tune</button>
+                <button id="resetBtn" class="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors">Reset</button>
             </div>
         </header>
 
-        <!-- Simulation Viewports (Light Mode) -->
-        <div class="bg-white rounded-2xl p-4 relative h-40 overflow-hidden flex items-center border border-slate-200 sim-grid shadow-sm">
+        <!-- Simulation Viewport -->
+        <div class="bg-white rounded-2xl p-4 relative h-44 overflow-hidden flex items-center border border-slate-100 sim-grid shadow-sm">
             <div id="sim-field" class="relative w-full h-full">
                 <!-- Target -->
-                <div id="target" class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-4xl select-none z-10" style="left: 70%;">👤</div>
+                <div id="target" class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-5xl select-none z-10" style="left: 50%;">👤</div>
                 
                 <!-- Tracking Marker -->
                 <div id="tracker" class="absolute inset-y-0 w-1 bg-red-500 flex items-center justify-center z-20" style="left: 50%;">
-                    <div class="absolute w-10 h-10 border border-red-500/20 rounded-full"></div>
-                    <div class="h-full w-px bg-red-500/30"></div>
-                </div>
-
-                <!-- Load Force Arrow (Visualizing why SS error exists) -->
-                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center opacity-40">
-                    <span class="text-[9px] font-bold text-slate-400 uppercase">Load Force →</span>
+                    <div class="absolute w-12 h-12 border border-red-500/10 rounded-full"></div>
+                    <div class="h-full w-px bg-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]"></div>
                 </div>
             </div>
         </div>
@@ -53,61 +48,60 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             
             <!-- Controls Panel -->
-            <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex flex-col justify-between">
+            <div class="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between">
                 <div>
-                    <div class="flex justify-between items-center mb-4 border-b border-slate-200 pb-2">
-                        <h2 class="font-bold text-xs uppercase tracking-widest text-slate-500">Gains Tuning</h2>
-                        <div class="flex gap-2">
-                            <span class="physics-label">Mass: 1kg</span>
-                            <span class="physics-label">Load: 0.8N</span>
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-2">
+                        <h2 class="font-bold text-xs uppercase tracking-widest text-slate-400">Control Gains</h2>
+                        <div class="flex items-center gap-2">
+                            <span id="modeDisplay" class="text-[9px] font-bold text-indigo-500 uppercase tracking-widest">Random Mode</span>
                         </div>
                     </div>
 
-                    <div class="space-y-4">
+                    <div class="space-y-6">
                         <!-- Kp -->
                         <div>
                             <div class="flex justify-between text-xs font-bold mb-1">
-                                <span class="text-red-600 uppercase tracking-tighter">Proportional (Kp)</span>
-                                <span id="kp-val" class="font-mono text-red-700 bg-white border border-red-100 px-1.5 rounded">0.08</span>
+                                <span class="text-red-500 uppercase tracking-tight">P-Gain (Proportional)</span>
+                                <span id="kp-val" class="font-mono text-red-700 bg-white border border-red-50 px-2 rounded">0.00</span>
                             </div>
-                            <input type="range" id="kp" min="0" max="0.5" step="0.005" value="0.08" class="w-full">
+                            <input type="range" id="kp" min="0" max="2.0" step="0.01" value="0.00" class="w-full">
                         </div>
 
                         <!-- Ki -->
                         <div>
                             <div class="flex justify-between text-xs font-bold mb-1">
-                                <span class="text-green-600 uppercase tracking-tighter">Integral (Ki)</span>
-                                <span id="ki-val" class="font-mono text-green-700 bg-white border border-green-100 px-1.5 rounded">0.000</span>
+                                <span class="text-green-600 uppercase tracking-tight">I-Gain (Integral)</span>
+                                <span id="ki-val" class="font-mono text-green-700 bg-white border border-green-50 px-2 rounded">0.0000</span>
                             </div>
-                            <input type="range" id="ki" min="0" max="0.05" step="0.0005" value="0.00" class="w-full">
+                            <input type="range" id="ki" min="0" max="0.1" step="0.0005" value="0.00" class="w-full">
                         </div>
 
                         <!-- Kd -->
                         <div>
                             <div class="flex justify-between text-xs font-bold mb-1">
-                                <span class="text-blue-600 uppercase tracking-tighter">Derivative (Kd)</span>
-                                <span id="kd-val" class="font-mono text-blue-700 bg-white border border-blue-100 px-1.5 rounded">0.05</span>
+                                <span class="text-blue-500 uppercase tracking-tight">D-Gain (Derivative)</span>
+                                <span id="kd-val" class="font-mono text-blue-700 bg-white border border-blue-50 px-2 rounded">0.00</span>
                             </div>
-                            <input type="range" id="kd" min="0" max="1" step="0.01" value="0.05" class="w-full">
+                            <input type="range" id="kd" min="0" max="5.0" step="0.05" value="0.00" class="w-full">
                         </div>
                     </div>
                 </div>
 
-                <div class="mt-6 pt-4 border-t border-slate-200">
-                    <p id="hint" class="text-xs text-slate-500 italic leading-relaxed">
-                        Starting...
+                <div class="mt-8 pt-4 border-t border-slate-100">
+                    <p id="hint" class="text-xs text-slate-500 font-medium leading-relaxed italic">
+                        All gains are 0. The tracker is inactive.
                     </p>
                 </div>
             </div>
 
             <!-- Graphing Panel -->
-            <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+            <div class="bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="font-bold text-xs uppercase tracking-widest text-slate-500">System Response</h2>
-                    <div class="flex gap-3 text-[8px] font-extrabold uppercase">
-                        <span class="text-slate-400">Target</span>
-                        <span class="text-red-500">Servo</span>
-                        <span class="text-yellow-500">Error</span>
+                    <h2 class="font-bold text-xs uppercase tracking-widest text-slate-400">Response Analysis</h2>
+                    <div class="flex gap-3 text-[8px] font-extrabold uppercase tracking-tighter">
+                        <span class="text-slate-300">● Target</span>
+                        <span class="text-red-400">● Tracker</span>
+                        <span class="text-yellow-400">● Error</span>
                     </div>
                 </div>
                 <canvas id="graph" class="w-full h-48"></canvas>
@@ -116,19 +110,22 @@
     </div>
 
     <script>
-        // Physics Constants (1kg System)
-        const MASS = 1.0;              // Updated to 1kg
-        const FRICTION_DAMPING = 0.98; // Natural mechanical friction
-        const LOAD_FORCE = 0.8;        // Constant disturbance force (causes steady state error)
+        // Physics Constants
+        const MASS = 0.5;               
+        const FRICTION_DAMPING = 0.9995; 
+        const LOAD_FORCE = 3.0;         
         
         // State
-        let kp = 0.08, ki = 0.0, kd = 0.05;
+        let kp = 0, ki = 0, kd = 0;
         let targetX = 50, currentX = 50, velocity = 0;
+        let targetVel = 0; 
         let integral = 0, lastError = 0;
         let time = 0;
+        let isStepMode = false;
+        let stepTimeout = null;
 
         // Data History
-        const historySize = 200;
+        const historySize = 300;
         const targetHist = Array(historySize).fill(50);
         const currentHist = Array(historySize).fill(50);
         const errorHist = Array(historySize).fill(0);
@@ -140,8 +137,9 @@
         const ctx = graph.getContext('2d');
         const hint = document.getElementById('hint');
         const autotuneBtn = document.getElementById('autotuneBtn');
+        const stepBtn = document.getElementById('stepBtn');
+        const modeDisplay = document.getElementById('modeDisplay');
 
-        // Input Setup
         const setupInput = (id, setter) => {
             const el = document.getElementById(id);
             const valEl = document.getElementById(id + '-val');
@@ -156,62 +154,90 @@
         setupInput('ki', v => ki = v);
         setupInput('kd', v => kd = v);
 
-        // Autotune Preset for 1kg
+        // Autotune Preset
         autotuneBtn.onclick = () => {
-            const presets = { kp: 0.18, ki: 0.0150, kd: 0.19 };
+            const presets = { kp: 0.38, ki: 0.0380, kd: 0.35 };
             document.getElementById('kp').value = presets.kp;
             document.getElementById('ki').value = presets.ki;
             document.getElementById('kd').value = presets.kd;
-            // Trigger UI updates
             document.getElementById('kp').oninput({target: {value: presets.kp}});
             document.getElementById('ki').oninput({target: {value: presets.ki}});
             document.getElementById('kd').oninput({target: {value: presets.kd}});
         };
 
+        // Step Input Testing
+        stepBtn.onclick = () => {
+            isStepMode = true;
+            modeDisplay.innerText = "Step Mode Active";
+            modeDisplay.classList.replace('text-indigo-500', 'text-red-500');
+            
+            // Sudden jump
+            targetVel = 0;
+            targetX = targetX > 50 ? 20 : 80;
+            
+            if (stepTimeout) clearTimeout(stepTimeout);
+            stepTimeout = setTimeout(() => {
+                isStepMode = false;
+                modeDisplay.innerText = "Random Mode";
+                modeDisplay.classList.replace('text-red-500', 'text-indigo-500');
+            }, 3000);
+        };
+
         document.getElementById('resetBtn').onclick = () => {
             currentX = 50; velocity = 0; integral = 0; lastError = 0;
+            targetX = 50; targetVel = 0;
+            isStepMode = false;
+            if (stepTimeout) clearTimeout(stepTimeout);
+            modeDisplay.innerText = "Random Mode";
+            modeDisplay.classList.replace('text-red-500', 'text-indigo-500');
+            
+            document.getElementById('kp').value = 0;
+            document.getElementById('ki').value = 0;
+            document.getElementById('kd').value = 0;
+            document.getElementById('kp').oninput({target: {value: 0}});
+            document.getElementById('ki').oninput({target: {value: 0}});
+            document.getElementById('kd').oninput({target: {value: 0}});
         };
 
         function update() {
             time += 0.02;
 
-            // 1. Move target
-            targetX = 50 + Math.sin(time * 0.8) * 30;
+            if (!isStepMode) {
+                // Random walk
+                targetVel += (Math.random() - 0.5) * 0.4;
+                targetVel *= 0.96; 
+                targetX += targetVel;
+            }
 
-            // 2. Very small random jitter (Sensor noise)
-            const randomNoise = (Math.random() - 0.5) * 0.1;
+            // Boundary constraints
+            if (targetX < 15) { targetX = 15; targetVel *= -0.5; }
+            if (targetX > 85) { targetX = 85; targetVel *= -0.5; }
 
-            // 3. PID Math
-            const error = (targetX - currentX) + randomNoise;
+            // PID Math
+            const noise = (Math.random() - 0.5) * 0.15;
+            const error = (targetX - currentX) + noise;
             
             integral += error;
-            // Anti-windup
-            integral = Math.max(-50, Math.min(50, integral));
+            integral = Math.max(-100, Math.min(100, integral)); 
             
             const derivative = error - lastError;
-            
-            // Torque generated by PID
             const pidTorque = (kp * error) + (ki * integral) + (kd * derivative);
 
-            // 4. Physical Plant
-            // We subtract LOAD_FORCE. The PID must counteract this to reach target.
+            // Plant simulation
             let acceleration = (pidTorque - LOAD_FORCE) / MASS;
-            
             velocity += acceleration;
             velocity *= FRICTION_DAMPING; 
             currentX += velocity;
 
             lastError = error;
 
-            // Visual boundaries
             if (currentX < 0) { currentX = 0; velocity = 0; }
             if (currentX > 100) { currentX = 100; velocity = 0; }
 
-            // Update DOM
+            // Refresh UI
             targetEl.style.left = `${targetX}%`;
             trackerEl.style.left = `${currentX}%`;
 
-            // Record History
             targetHist.push(targetX); targetHist.shift();
             currentHist.push(currentX); currentHist.shift();
             errorHist.push(error + 50); errorHist.shift();
@@ -222,15 +248,19 @@
         }
 
         function renderHint() {
+            if (kp === 0 && ki === 0 && kd === 0) {
+                hint.innerHTML = "<strong>Gains are zero.</strong> The tracker is currently inactive.";
+                return;
+            }
             const absError = Math.abs(targetX - currentX);
             if (ki === 0 && absError > 1.5) {
-                hint.innerHTML = "<strong>Steady State Error detected!</strong> The tracker lags behind the face because the motor isn't pushing hard enough to balance the Load Force. <span class='text-green-600 font-bold'>Increase Ki</span> to fix this.";
-            } else if (kp > 0.15 && kd < 0.1) {
-                hint.innerText = "The 1kg mass is oscillating! High Kp with low Kd causes the tracker to swing past the target. Add more Derivative (Kd) to dampen it.";
-            } else if (absError < 0.5) {
-                hint.innerText = "Perfect tracking! The Integral term has successfully eliminated the steady-state error caused by the load.";
+                hint.innerHTML = "<strong>Constant offset detected.</strong> Adjust the <strong>I-Gain</strong> to remove the steady-state error.";
+            } else if (kp > 1.0 && kd < 0.8) {
+                hint.innerHTML = "<strong>System is oscillating.</strong> Adjust <strong>P and D gains</strong> to stabilize the tracking.";
+            } else if (absError < 0.6) {
+                hint.innerHTML = "<strong>System is stable.</strong> The tracking is currently precise.";
             } else {
-                hint.innerText = "Adjust P for speed, D for stability, and I for precision.";
+                hint.innerText = "Tune P for speed, D for stability, and I for precision.";
             }
         }
 
@@ -240,9 +270,8 @@
             if (w === 0 || h === 0) return;
             ctx.clearRect(0, 0, w, h);
 
-            // Zero line
-            ctx.strokeStyle = '#e2e8f0';
-            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.setLineDash([4, 4]);
             ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
             ctx.setLineDash([]);
 
@@ -260,9 +289,9 @@
                 ctx.globalAlpha = 1;
             };
 
-            drawLine(targetHist, '#cbd5e1', 2);
+            drawLine(targetHist, '#e2e8f0', 2);
             drawLine(currentHist, '#ef4444', 3);
-            drawLine(errorHist, '#fbbf24', 1.5, 0.7);
+            drawLine(errorHist, '#fbbf24', 1.2, 0.4);
         }
 
         window.onload = update;
